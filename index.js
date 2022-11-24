@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 
 const app = express();
@@ -24,7 +24,12 @@ async function run(){
             const category = await categoriesCollection.find(query).toArray();
             res.send(category)
         })
-        
+        app.get('/categories/:id', async(req, res) => {
+            const id = req.params.id
+            const query = {_id: ObjectId(id)}
+            const result = await categoriesCollection.findOne(query);
+            res.send(result)
+        })
         app.get('/products', async(req, res) => {
             // const catName = req.query.categoryName
             let query = {}
