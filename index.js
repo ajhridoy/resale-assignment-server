@@ -18,6 +18,7 @@ async function run(){
     try{
         const categoriesCollection = client.db('resaleDB').collection('categories')
         const productsCollection = client.db('resaleDB').collection('products')
+        const bookingsCollection = client.db('resaleDB').collection('bookings')
 
         app.get('/categories', async(req, res) => {
             const query = {}
@@ -31,7 +32,6 @@ async function run(){
             res.send(result)
         })
         app.get('/products', async(req, res) => {
-            // const catName = req.query.categoryName
             let query = {}
             if(req.query.categoryName){
                 query = {
@@ -40,6 +40,13 @@ async function run(){
             }
             const product = await productsCollection.find(query).toArray();
             res.send(product)
+        })
+
+        //booking API
+        app.post('/bookings', async(req, res) => {
+            const booking = req.body
+            const result = await bookingsCollection.insertOne(booking);
+            res.send(result)
         })
     }
     finally{
