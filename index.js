@@ -19,6 +19,7 @@ async function run(){
         const categoriesCollection = client.db('resaleDB').collection('categories')
         const productsCollection = client.db('resaleDB').collection('products')
         const bookingsCollection = client.db('resaleDB').collection('bookings')
+        const usersCollection = client.db('resaleDB').collection('users')
 
         app.get('/categories', async(req, res) => {
             const query = {}
@@ -43,11 +44,27 @@ async function run(){
         })
 
         //booking API
+
+        app.get('/bookings', async(req, res) => {
+            const email = req.query.email
+            const query = {email: email}
+            const result = await bookingsCollection.find(query).toArray();
+            res.send(result)
+        })
+
         app.post('/bookings', async(req, res) => {
             const booking = req.body
             const result = await bookingsCollection.insertOne(booking);
             res.send(result)
         })
+
+        //users API
+        app.post('/users', async(req, res) => {
+            const user = req.body
+            const result = await usersCollection.insertOne(user)
+            res.send(result)
+        })
+
     }
     finally{
 
