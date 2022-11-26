@@ -63,13 +63,31 @@ async function run(){
             const email = req.query.email
             const query = {email: email}
             const result = await productsCollection.find(query).toArray();
-            console.log(result)
+            res.send(result)
+        })
+
+        app.get('/products/available', async(req, res) => {
+            const query = {available: true}
+            const result = await productsCollection.find(query).toArray();
             res.send(result)
         })
 
         app.post('/products', async(req, res) => {
             const product = req.body;
             const result = await productsCollection.insertOne(product);
+            res.send(result)
+        })
+
+        app.put('/products/:id', async(req, res) => {
+            const id = req.params.id
+            const filter = {_id: ObjectId(id)}
+            const option = {upsert: true}
+            const updatedDoc = {
+                $set: {
+                    available: true
+                }
+            }
+            const result = await productsCollection.updateOne(filter, updatedDoc, option)
             res.send(result)
         })
 
