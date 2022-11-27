@@ -87,7 +87,14 @@ async function run(){
             res.send(result)
         })
 
-        app.delete('/products/:id', async(req, res) => {
+        app.delete('/products/:id', verifyJWT, verifySeller, async(req, res) => {
+            const id = req.params.id
+            const filter = {_id: ObjectId(id)}
+            const result = await productsCollection.deleteOne(filter);
+            res.send(result)
+        })
+
+        app.delete('/product/:id', verifyJWT, verifyAdmin, async(req, res) => {
             const id = req.params.id
             const filter = {_id: ObjectId(id)}
             const result = await productsCollection.deleteOne(filter);
@@ -96,6 +103,12 @@ async function run(){
 
         app.get('/products/available', async(req, res) => {
             const query = {available: true}
+            const result = await productsCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        app.get('/products/report', verifyJWT, verifyAdmin, async(req, res) => {
+            const query = {report: true}
             const result = await productsCollection.find(query).toArray();
             res.send(result)
         })
@@ -113,6 +126,19 @@ async function run(){
             const updatedDoc = {
                 $set: {
                     available: true
+                }
+            }
+            const result = await productsCollection.updateOne(filter, updatedDoc, option)
+            res.send(result)
+        })
+
+        app.put('/product/:id', async(req, res) => {
+            const id = req.params.id
+            const filter = {_id: ObjectId(id)}
+            const option = {upsert: true}
+            const updatedDoc = {
+                $set: {
+                    report: true
                 }
             }
             const result = await productsCollection.updateOne(filter, updatedDoc, option)
