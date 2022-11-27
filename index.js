@@ -47,6 +47,16 @@ async function run(){
             }
             next()
         }
+        const verifyAdmin = async(req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = {email: decodedEmail};
+            const user = await usersCollection.findOne(query)
+
+            if(user.role !== 'Admin'){
+                return res.status(403).send({message: 'forbidden access'})
+            }
+            next()
+        }
 
         app.get('/categories', async(req, res) => {
             const query = {}
@@ -161,6 +171,24 @@ async function run(){
             res.send(result)
         })
 
+        app.delete('/users/:id', verifyJWT, verifyAdmin, async(req, res) => {
+            const id = req.params.id
+            const filter = {_id: ObjectId(id)}
+            const result = await usersCollection.deleteOne(filter);
+            res.send(result)
+        })
+
+        app.get('/users/buyers', verifyJWT, verifyAdmin, async(req, res) => {
+            const query = {role: 'Buyer'}
+            const result = await usersCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        app.get('/users/sellers', verifyJWT, verifyAdmin, async(req, res) => {
+            const query = {role: 'Seller'}
+            const result = await usersCollection.find(query).toArray();
+            res.send(result)
+        })
 
 
     }
