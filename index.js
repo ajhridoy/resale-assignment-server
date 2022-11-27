@@ -5,7 +5,7 @@ require('dotenv').config()
 const jwt = require('jsonwebtoken')
 
 const app = express();
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 5000;
 
 app.use(cors())
 app.use(express.json())
@@ -23,7 +23,7 @@ function verifyJWT(req, res, next){
     const token = authHeader.split(' ')[1];
     jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
         if(err){
-            return res.status(401).send('unauthorize access')  
+            return res.status(403).send('forbidden access')  
         }
         req.decoded = decoded;
         next()
@@ -36,6 +36,17 @@ async function run(){
         const productsCollection = client.db('resaleDB').collection('products')
         const bookingsCollection = client.db('resaleDB').collection('bookings')
         const usersCollection = client.db('resaleDB').collection('users')
+
+        const verifySeller = async(req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = {email: decodedEmail};
+            const user = await usersCollection.findOne(query)
+
+            if(user.role !== 'Seller'){
+                return res.status(403).send({message: 'forbidden access'})
+            }
+            next()
+        }
 
         app.get('/categories', async(req, res) => {
             const query = {}
@@ -59,10 +70,17 @@ async function run(){
             res.send(product)
         })
 
-        app.get('/products/email', async(req, res) => {
+        app.get('/products/email', verifyJWT, verifySeller, async(req, res) => {
             const email = req.query.email
             const query = {email: email}
             const result = await productsCollection.find(query).toArray();
+            res.send(result)
+        })
+
+        app.delete('/products/:id', async(req, res) => {
+            const id = req.params.id
+            const filter = {_id: ObjectId(id)}
+            const result = await productsCollection.deleteOne(filter);
             res.send(result)
         })
 
@@ -97,7 +115,7 @@ async function run(){
             const email = req.query.email
             const decodedEmail = req.decoded.email;
             if(email !== decodedEmail){
-                return res.status(403).send('Forbidden Access')  
+                return res.status(403).send('forbidden access')  
             }
             const query = {email: email}
             const result = await bookingsCollection.find(query).toArray();
@@ -134,7 +152,7 @@ async function run(){
             const email = req.params.email
             const query = {email}
             const user = await usersCollection.findOne(query)
-            res.send({isAdmin: user.role === 'Seller'})
+            res.send({isSeller: user.role === 'Seller'})
         })
 
         app.post('/users', async(req, res) => {
@@ -142,6 +160,8 @@ async function run(){
             const result = await usersCollection.insertOne(user)
             res.send(result)
         })
+
+
 
     }
     finally{
