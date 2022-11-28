@@ -4,6 +4,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -36,6 +39,7 @@ async function run(){
         const productsCollection = client.db('resaleDB').collection('products')
         const bookingsCollection = client.db('resaleDB').collection('bookings')
         const usersCollection = client.db('resaleDB').collection('users')
+        const paymentsCollection = client.db('resaleDB').collection('payments')
 
         const verifySeller = async(req, res, next) => {
             const decodedEmail = req.decoded.email;
@@ -73,7 +77,8 @@ async function run(){
             let query = {}
             if(req.query.categoryName){
                 query = {
-                    categoryName: req.query.categoryName
+                    categoryName: req.query.categoryName,
+                    paid: false
                 }
             }
             const product = await productsCollection.find(query).toArray();
@@ -102,7 +107,7 @@ async function run(){
         })
 
         app.get('/products/available', async(req, res) => {
-            const query = {available: true}
+            const query = {available: true, paid: false}
             const result = await productsCollection.find(query).toArray();
             res.send(result)
         })
@@ -158,6 +163,13 @@ async function run(){
             res.send(result)
         })
 
+        app.get('/bookings/:id', async(req, res) => {
+            const id = req.params.id
+            const query = {_id: ObjectId(id)}
+            const booking = await bookingsCollection.findOne(query)
+            res.send(booking)
+        })
+
         app.post('/bookings', async(req, res) => {
             const booking = req.body
             const result = await bookingsCollection.insertOne(booking);
@@ -165,6 +177,52 @@ async function run(){
         })
 
         //users API
+
+        app.post("/create-payment-intent", async (req, res) => {
+            const booking = req.body;
+            const price = booking.price
+            const amount = price * 100
+          
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                  ],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+              });
+           
+            });
+
+            app.post('/payments', verifyJWT, async(req, res) => {
+                const payment = req.body;
+                const result = await paymentsCollection.insertOne(payment)
+                if(payment.bookingId){
+                    const id = payment.bookingId
+                const filter = {_id: ObjectId(id)}
+                const updatedDoc = {
+                    $set: {
+                        paid: true,
+                        transactionId: payment.transactionId
+                    }
+                }
+                const updatedResult = await bookingsCollection.updateOne(filter, updatedDoc)
+                }
+                if(payment.brandName){
+                    const name = payment.brandName
+                    const filter = {name: name}
+                    const option = {upsert: true}
+                    const updatedDoc = {
+                        $set: {
+                            paid: true,
+                        }
+                    }
+                    const updateproduct = await productsCollection.updateOne(filter, updatedDoc, option)
+                }
+                res.send(result)
+            })
 
         app.get('/jwt', async(req, res) => {
             const email = req.query.email;
@@ -189,6 +247,13 @@ async function run(){
             const query = {email}
             const user = await usersCollection.findOne(query)
             res.send({isSeller: user.role === 'Seller'})
+        })
+
+        app.get('/users/buyer/:email', async(req, res) => {
+            const email = req.params.email
+            const query = {email}
+            const user = await usersCollection.findOne(query)
+            res.send({isBuyer: user.role === 'Buyer'})
         })
 
         app.post('/users', async(req, res) => {
